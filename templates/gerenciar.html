@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gerenciar Usuários</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0f172a;
+      color: #f1f5f9;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    .container { max-width: 480px; margin: 0 auto; }
+
+    h1 { font-size: 1.3rem; font-weight: 700; margin-bottom: 24px; }
+
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .card h2 { font-size: 0.95rem; font-weight: 700; margin-bottom: 16px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; }
+
+    .user-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid #334155;
+    }
+
+    .user-row:last-child { border-bottom: none; }
+
+    .user-name { font-weight: 600; }
+
+    .btn-remove {
+      background: none;
+      border: 1px solid #ef4444;
+      color: #ef4444;
+      border-radius: 6px;
+      padding: 4px 12px;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+
+    .btn-remove:hover { background: #ef4444; color: #fff; }
+
+    .field {
+      width: 100%;
+      padding: 10px 14px;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      color: #f1f5f9;
+      font-size: 0.9rem;
+      margin-bottom: 10px;
+      outline: none;
+    }
+
+    .field:focus { border-color: #3b82f6; }
+
+    .btn-add {
+      width: 100%;
+      padding: 10px;
+      background: #22c55e;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-add:hover { background: #16a34a; }
+
+    .msg { font-size: 0.85rem; margin-top: 10px; min-height: 18px; }
+    .msg.ok  { color: #22c55e; }
+    .msg.err { color: #ef4444; }
+
+    .vazio { color: #94a3b8; font-size: 0.88rem; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>⚙️ Gerenciar Usuários</h1>
+
+  <div class="card">
+    <h2>Usuários cadastrados</h2>
+    <div id="lista-usuarios">
+      {% if usuarios %}
+        {% for u in usuarios %}
+        <div class="user-row" id="row-{{ u }}">
+          <span class="user-name">{{ u }}</span>
+          <button class="btn-remove" onclick="remover('{{ u }}')">Remover</button>
+        </div>
+        {% endfor %}
+      {% else %}
+        <p class="vazio">Nenhum usuário cadastrado.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Adicionar usuário</h2>
+    <input class="field" type="text"     id="novo-usuario" placeholder="Usuário (sem espaços)">
+    <input class="field" type="password" id="nova-senha"   placeholder="Senha">
+    <button class="btn-add" onclick="adicionar()">Adicionar</button>
+    <div class="msg" id="msg-add"></div>
+  </div>
+</div>
+
+<script>
+  const KEY = "{{ key }}";
+
+  async function adicionar() {
+    const usuario = document.getElementById('novo-usuario').value.trim();
+    const senha   = document.getElementById('nova-senha').value.trim();
+    const msg     = document.getElementById('msg-add');
+
+    if (!usuario || !senha) { msg.className = 'msg err'; msg.textContent = 'Preencha usuário e senha.'; return; }
+
+    const res  = await fetch(`/api/usuarios/add?key=${KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: usuario, password: senha }),
+    });
+    const data = await res.json();
+
+    if (data.ok) {
+      msg.className = 'msg ok';
+      msg.textContent = `Usuário "${usuario}" adicionado!`;
+      document.getElementById('novo-usuario').value = '';
+      document.getElementById('nova-senha').value   = '';
+
+      const lista = document.getElementById('lista-usuarios');
+      const row   = document.createElement('div');
+      row.className = 'user-row';
+      row.id = `row-${usuario}`;
+      row.innerHTML = `<span class="user-name">${usuario}</span>
+                       <button class="btn-remove" onclick="remover('${usuario}')">Remover</button>`;
+      lista.appendChild(row);
+    } else {
+      msg.className   = 'msg err';
+      msg.textContent = data.error || 'Erro ao adicionar.';
+    }
+  }
+
+  async function remover(usuario) {
+    if (!confirm(`Remover "${usuario}" e apagar o álbum dele?`)) return;
+
+    const res  = await fetch(`/api/usuarios/remove?key=${KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: usuario }),
+    });
+    const data = await res.json();
+
+    if (data.ok) {
+      document.getElementById(`row-${usuario}`)?.remove();
+    }
+  }
+</script>
+
+</body>
+</html>

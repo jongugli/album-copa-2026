@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Álbum Copa 2026</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0f172a;
+      color: #f1f5f9;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .box {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 16px;
+      padding: 40px 36px;
+      width: 90%;
+      max-width: 380px;
+      text-align: center;
+    }
+
+    .logo { font-size: 3rem; margin-bottom: 12px; }
+
+    h1 { font-size: 1.4rem; font-weight: 700; margin-bottom: 6px; }
+
+    .sub { color: #94a3b8; font-size: 0.88rem; margin-bottom: 28px; }
+
+    .field {
+      width: 100%;
+      padding: 11px 14px;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      color: #f1f5f9;
+      font-size: 0.95rem;
+      margin-bottom: 12px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .field:focus { border-color: #3b82f6; }
+
+    .btn {
+      width: 100%;
+      padding: 11px;
+      background: #3b82f6;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+      margin-top: 4px;
+    }
+
+    .btn:hover { background: #2563eb; }
+    .btn:disabled { background: #475569; cursor: default; }
+
+    .erro {
+      color: #ef4444;
+      font-size: 0.82rem;
+      margin-top: 10px;
+      min-height: 18px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="box">
+  <div class="logo">🌍</div>
+  <h1>Álbum Copa 2026</h1>
+  <p class="sub">Entre com seu usuário e senha</p>
+
+  <input class="field" type="text"     id="usuario" placeholder="Usuário"
+         autocomplete="username" onkeydown="if(event.key==='Enter') entrar()">
+  <input class="field" type="password" id="senha"   placeholder="Senha"
+         autocomplete="current-password" onkeydown="if(event.key==='Enter') entrar()">
+
+  <button class="btn" id="btn-entrar" onclick="entrar()">Entrar</button>
+
+  <div class="erro" id="erro"></div>
+</div>
+
+<script>
+  async function entrar() {
+    const usuario = document.getElementById('usuario').value.trim();
+    const senha   = document.getElementById('senha').value;
+    const erro    = document.getElementById('erro');
+    const btn     = document.getElementById('btn-entrar');
+
+    erro.textContent = '';
+
+    if (!usuario) { erro.textContent = 'Digite seu usuário.'; return; }
+    if (!senha)   { erro.textContent = 'Digite sua senha.';   return; }
+
+    btn.disabled    = true;
+    btn.textContent = 'Entrando…';
+
+    try {
+      const res  = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: usuario, password: senha }),
+      });
+      const data = await res.json();
+
+      if (data.ok) {
+        window.location.href = '/album';
+      } else {
+        erro.textContent     = data.error || 'Usuário ou senha incorretos.';
+        btn.disabled         = false;
+        btn.textContent      = 'Entrar';
+        document.getElementById('senha').value = '';
+        document.getElementById('senha').focus();
+      }
+    } catch {
+      erro.textContent = 'Erro de conexão. Tente novamente.';
+      btn.disabled     = false;
+      btn.textContent  = 'Entrar';
+    }
+  }
+
+  document.getElementById('usuario').focus();
+</script>
+
+</body>
+</html>
