@@ -391,6 +391,66 @@
     .btn-confirm { background: #ef4444; color: #fff; border-color: #ef4444; }
     .btn-confirm:hover { background: #dc2626; border-color: #dc2626; color: #fff; }
 
+    /* ── Login Overlay ────────────────────────────────────────────────────── */
+    .login-overlay {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      z-index: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .login-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 36px 32px;
+      width: 90%;
+      max-width: 360px;
+      text-align: center;
+    }
+
+    .login-box h2 { font-size: 1.3rem; margin-bottom: 6px; }
+    .login-box p  { color: var(--muted); font-size: 0.85rem; margin-bottom: 24px; }
+
+    .login-input {
+      width: 100%;
+      padding: 10px 14px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 1rem;
+      margin-bottom: 12px;
+      outline: none;
+    }
+
+    .login-input:focus { border-color: var(--accent); }
+
+    .btn-login {
+      width: 100%;
+      padding: 10px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .btn-login:hover { background: #2563eb; }
+
+    .login-error {
+      color: #ef4444;
+      font-size: 0.82rem;
+      margin-top: 8px;
+      min-height: 18px;
+    }
+
     /* ── Toast ─────────────────────────────────────────────────────────────── */
     #toast {
       position: fixed;
@@ -428,11 +488,25 @@
 </head>
 <body>
 
+{% if needs_auth %}
+<div class="login-overlay" id="login-overlay">
+  <div class="login-box">
+    <div style="font-size:2rem;margin-bottom:10px;">🔒</div>
+    <h2>Álbum de {{ user_id }}</h2>
+    <p>Digite a senha para acessar este álbum.</p>
+    <input class="login-input" type="password" id="login-senha"
+           placeholder="Senha" onkeydown="if(event.key==='Enter') fazerLogin()">
+    <button class="btn-login" onclick="fazerLogin()">Entrar</button>
+    <div class="login-error" id="login-erro"></div>
+  </div>
+</div>
+{% endif %}
+
 <!-- ── Header ────────────────────────────────────────────────────────────── -->
 <header>
   <div class="header-top">
     <div class="header-title">
-      🌍 Álbum Copa 2026
+      🌍 Álbum Copa 2026{% if user_id and user_id != 'default' %} — {{ user_id }}{% endif %}
     </div>
     <div class="controls">
       <button class="btn" onclick="mostrarFaltam()">📋 Faltam</button>
@@ -565,9 +639,31 @@
 <div id="toast"></div>
 
 <script>
-  // ── Estado de tradução dos status ────────────────────────────────────────
+  const USER_ID      = "{{ user_id }}";
   const STATUS_ICON  = { 0: '',  1: '✓', 2: '🔄' };
   const STATUS_LABEL = { 0: 'Não tenho', 1: 'Tenho', 2: 'Repetida' };
+
+  // ── Login ────────────────────────────────────────────────────────────────
+  async function fazerLogin() {
+    const senha = document.getElementById('login-senha').value;
+    const erro  = document.getElementById('login-erro');
+    erro.textContent = '';
+
+    const res  = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: USER_ID, password: senha }),
+    });
+    const data = await res.json();
+
+    if (data.ok) {
+      window.location.reload();
+    } else {
+      erro.textContent = data.error || 'Senha incorreta.';
+      document.getElementById('login-senha').value = '';
+      document.getElementById('login-senha').focus();
+    }
+  }
 
   // ── Contadores por seção (calculados no load) ────────────────────────────
   function atualizarContadores() {
@@ -591,7 +687,7 @@
       const res  = await fetch('/api/toggle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: sid }),
+        body: JSON.stringify({ id: sid, user_id: USER_ID }),
       });
       const data = await res.json();
 
@@ -637,7 +733,7 @@
 
     if (panel.style.display === 'block') { panel.style.display = 'none'; return; }
 
-    const data = await fetch('/api/faltam').then(r => r.json());
+    const data = await fetch(`/api/faltam?u=${USER_ID}`).then(r => r.json());
     const el   = document.getElementById('faltam-content');
 
     if (!data.length) {
@@ -667,7 +763,7 @@
 
     if (panel.style.display === 'block') { panel.style.display = 'none'; return; }
 
-    const data = await fetch('/api/repetidas').then(r => r.json());
+    const data = await fetch(`/api/repetidas?u=${USER_ID}`).then(r => r.json());
     const el   = document.getElementById('rep-content');
 
     if (!data.length) {
@@ -691,7 +787,11 @@
 
   // ── Reset ────────────────────────────────────────────────────────────────
   async function resetAlbum() {
-    await fetch('/api/reset', { method: 'POST' });
+    await fetch('/api/reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: USER_ID }),
+    });
     document.getElementById('overlay').classList.remove('open');
     window.location.reload();
   }
